@@ -1,7 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:peliculas_flutter/models/models.dart';
 
-class MovieSlider extends StatelessWidget {
-  const MovieSlider({Key? key}) : super(key: key);
+class MovieSlider extends StatefulWidget {
+  final List<Movie> movies;
+  final String? title;
+  final Function onNextPage;
+
+  const MovieSlider({
+    Key? key,
+    required this.movies,
+    this.title,
+    required this.onNextPage,
+  }) : super(key: key);
+
+  @override
+  State<MovieSlider> createState() => _MovieSliderState();
+}
+
+class _MovieSliderState extends State<MovieSlider> {
+  final ScrollController scrollController = ScrollController();
+
+  @override
+  void initState() {
+    //Se ejecuta la primera vez que el widget se construye
+    super.initState();
+    scrollController.addListener(() {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 500) {
+        //redibujar el listview
+        widget.onNextPage();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,25 +41,31 @@ class MovieSlider extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              "Populares",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          widget.title == null
+              ? Container()
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    widget.title!,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
           const SizedBox(
             height: 5,
           ),
           //Toma todo el tamaño que sobra Expanded
           Expanded(
             child: ListView.builder(
+              controller: scrollController,
               scrollDirection: Axis.horizontal,
-              itemCount: 20,
-              itemBuilder: (_, int index) => const _MovieContainer(),
+              itemCount: widget.movies.length,
+              itemBuilder: (_, int index) => _MovieContainer(
+                movie: widget.movies[index],
+                heroId: '${widget.title}-$index-${widget.movies[index].id}',
+              ),
             ),
           ),
         ],
@@ -39,10 +75,15 @@ class MovieSlider extends StatelessWidget {
 }
 
 class _MovieContainer extends StatelessWidget {
-  const _MovieContainer({Key? key}) : super(key: key);
+  final Movie movie;
+  final String heroId;
+  const _MovieContainer({Key? key, required this.movie, required this.heroId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    movie.heroId = heroId;
+
     return Container(
       width: 130,
       height: 190,
@@ -55,24 +96,27 @@ class _MovieContainer extends StatelessWidget {
             onTap: () => Navigator.pushNamed(
               context,
               'details',
-              arguments: 'movie-instance',
+              arguments: movie,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: const FadeInImage(
-                placeholder: AssetImage("assets/no-image.jpg"),
-                image: NetworkImage('https://via.placeholder.com/300x400'),
-                width: 130,
-                height: 190,
-                fit: BoxFit.cover,
+            child: Hero(
+              tag: movie.heroId!,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: FadeInImage(
+                  placeholder: const AssetImage("assets/no-image.jpg"),
+                  image: NetworkImage(movie.fullPosterImg),
+                  width: 130,
+                  height: 190,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
           const SizedBox(
             height: 5,
           ),
-          const Text(
-            "Starwars: El retorno de el nuevo Jedi silvestre de Monte Cristo",
+          Text(
+            movie.title,
             overflow: TextOverflow.ellipsis,
             maxLines: 2,
             textAlign: TextAlign.center,
